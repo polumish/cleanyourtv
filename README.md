@@ -392,6 +392,10 @@ and factory-test apps (Xiaomi's `com.duokan.factorytest`) answer HOME too and do
 the TV with nothing to start. Run the same list again once `launcher/build-and-install.sh` has made
 the new launcher Home and the entry is applied; `FORCE_HOME=1` (`$env:FORCE_HOME`) disables it anyway.
 
+Packages the TV cannot do without (Play Store, Play Services, the shell, the keyboard, remote pairing) sit on
+[`tools/protected-packages.txt`](tools/protected-packages.txt): `tools/disable.sh` and `check.py --fix` skip a list
+entry that names one and say why; `FORCE_PROTECTED=1` disables it anyway. No list in `examples/` names one.
+
 </details>
 
 <details>
