@@ -141,6 +141,22 @@ def report(list_path, listed, home, back_on, gone, home_drifted, expected=None):
     return 1
 
 
+PROTECTED_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "protected-packages.txt")
+
+
+def protected_packages(path=PROTECTED_FILE):
+    """Package names from tools/protected-packages.txt, the ones disable.sh never disables.
+
+    The file has to be readable: a guard that cannot read its list would pass every package.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError as e:
+        sys.exit(f"cannot read {path}: {e}; refusing to run without the protected package list")
+    return {line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()}
+
+
 def setupwraith_owns_wifi(dev):
     """Whether the saved Wi-Fi networks belong to setupwraith; None when the TV could not say."""
     owners = re.findall(r"cname=(\S*)", recovery.shell(dev, "dumpsys wifi"))
@@ -164,6 +180,13 @@ def safety_checks(dev, names):
     the inputs off does not have to remember two switches.
     """
     skipped = []
+    if not os.environ.get("FORCE_PROTECTED"):
+        protected = protected_packages()
+        for name in names:
+            if name in protected:
+                skipped.append((name, "it is on tools/protected-packages.txt: the TV needs it to install "
+                                      "apps, pair the remote, type text or stay reachable (set "
+                                      "FORCE_PROTECTED=1 to disable it)"))
     if SETUPWRAITH in names and not os.environ.get("FORCE_SETUPWRAITH"):
         owns = setupwraith_owns_wifi(dev)
         if owns is not False:

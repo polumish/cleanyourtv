@@ -1,0 +1,28 @@
+# Packages no debloat list may disable. tools/disable.sh and tools/check.py --fix skip them and say why.
+# One package per line, # comments allowed. FORCE_PROTECTED=1 disables them anyway.
+#
+# These are the pieces an owner cannot put back from the couch: with one of them off the TV cannot
+# install apps, pair its remote, type a password, or be reached over ADB. The list is short on purpose.
+# It holds only packages that exist on every Android TV / Google TV build and that no vendor bloat
+# list has a reason to touch; vendor-specific ones (TV input drivers, the Home app, setupwraith) have
+# their own checks in disable.sh.
+
+com.android.vending                      # Google Play Store
+com.google.android.gms                   # Google Play Services
+com.google.android.gsf                   # Google Services Framework
+com.google.android.packageinstaller      # installs and updates apps
+com.android.packageinstaller
+com.google.android.permissioncontroller  # runtime permission prompts
+com.android.permissioncontroller
+com.android.shell                        # the ADB shell itself
+com.android.systemui
+com.android.settings
+com.android.tv.settings
+com.android.providers.settings           # the settings database every app reads
+com.android.providers.tv                 # TV channels and inputs database
+com.android.providers.media
+com.android.providers.media.module
+com.android.providers.downloads
+com.android.bluetooth                    # remote and Bluetooth pairing
+com.android.inputdevices                 # keyboard layouts and remote input devices
+com.google.android.inputmethod.latin     # Gboard, the on-screen keyboard

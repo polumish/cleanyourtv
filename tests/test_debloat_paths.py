@@ -44,6 +44,7 @@ class DebloatPathsTest(unittest.TestCase):
         tools = repo / "tools"
         tools.mkdir(parents=True)
         shutil.copy2(ROOT / "tools" / script, tools / script)
+        shutil.copy2(ROOT / "tools" / "protected-packages.txt", tools / "protected-packages.txt")
         client = tools / "venv" / "bin" / "python"
         client.parent.mkdir(parents=True)
         client.write_text(

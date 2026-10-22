@@ -105,7 +105,7 @@ class HomeGuardTest(unittest.TestCase):
         self.repo = self.base / "repo"
         self.tools = self.repo / "tools"
         self.tools.mkdir(parents=True)
-        for name in ("disable.sh", "disable.ps1", "recovery.py"):
+        for name in ("disable.sh", "disable.ps1", "recovery.py", "protected-packages.txt"):
             shutil.copy2(ROOT / "tools" / name, self.tools / name)
         (self.tools / "tv.py").write_text(FAKE_TV)
         # The scripts call the tools venv's Python. Run the real interpreter, which imports the fake

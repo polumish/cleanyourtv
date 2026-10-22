@@ -22,6 +22,7 @@ class SetupwraithGuardTest(unittest.TestCase):
             tools = repo / "tools"
             tools.mkdir(parents=True)
             shutil.copy2(ROOT / "tools" / "disable.sh", tools / "disable.sh")
+            shutil.copy2(ROOT / "tools" / "protected-packages.txt", tools / "protected-packages.txt")
             client = tools / "venv" / "bin" / "python"
             client.parent.mkdir(parents=True)
             # Fake tv.py client: answers `dumpsys wifi` with the given owner, records --batch input.

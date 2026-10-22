@@ -26,6 +26,20 @@ if [ -n "$BAD" ]; then
   { echo "refusing $LIST: not a package name:"; printf '%s\n' "$BAD" | sed 's/^/  /'; } >&2
   exit 1
 fi
+# Packages the TV cannot do without (Play Store, Play Services, the shell, the keyboard, remote pairing)
+# are listed in tools/protected-packages.txt. A list that names one is skipped for that entry only, like
+# the other guards below; FORCE_PROTECTED=1 disables them anyway. The file must exist: a guard that
+# cannot read its list would otherwise pass everything.
+PROTECTED_FILE="tools/protected-packages.txt"
+[ -r "$PROTECTED_FILE" ] || { echo "missing $PROTECTED_FILE: refusing to run without the protected package list" >&2; exit 1; }
+if [ -n "$PKGS" ] && [ -z "${FORCE_PROTECTED:-}" ]; then
+  PROTECTED="$(sed -E 's/[[:space:]]*#.*$//' "$PROTECTED_FILE" | grep -vE '^[[:space:]]*$' || true)"
+  for p in $(printf '%s\n' "$PKGS" | grep -xF "$PROTECTED" || true); do
+    echo "Skipping $p: it is on tools/protected-packages.txt (the TV needs it to install apps, pair the" >&2
+    echo "remote, type text or stay reachable). Set FORCE_PROTECTED=1 to disable it anyway." >&2
+    PKGS="$(printf '%s\n' "$PKGS" | grep -vxF "$p" || true)"
+  done
+fi
 # A Wi-Fi network saved during the first-run wizard belongs to setupwraith, and Android deletes it the
 # moment setupwraith is disabled: the TV drops off Wi-Fi, and ADB and the phone remote go with it.
 # Skip it until the network has been forgotten and re-joined in Settings (it then belongs to

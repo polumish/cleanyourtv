@@ -124,7 +124,7 @@ class DriftCheckTest(unittest.TestCase):
         self.repo = self.base / "repo"
         tools = self.repo / "tools"
         tools.mkdir(parents=True)
-        for name in ("check.py", "recovery.py"):
+        for name in ("check.py", "recovery.py", "protected-packages.txt"):
             shutil.copy2(ROOT / "tools" / name, tools / name)
         (tools / "tv.py").write_text(FAKE_TV)
 

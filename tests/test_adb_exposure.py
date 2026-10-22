@@ -21,6 +21,7 @@ class AdbSecureWarningTest(unittest.TestCase):
             tools = repo / "tools"
             tools.mkdir(parents=True)
             shutil.copy2(ROOT / "tools" / "disable.sh", tools / "disable.sh")
+            shutil.copy2(ROOT / "tools" / "protected-packages.txt", tools / "protected-packages.txt")
             client = tools / "venv" / "bin" / "python"
             client.parent.mkdir(parents=True)
             # Fake tv.py client: answers getprop as given, takes the record, records --batch input.

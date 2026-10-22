@@ -93,7 +93,7 @@ class RecoveryRecordTest(unittest.TestCase):
         self.repo = self.base / "repo"
         tools = self.repo / "tools"
         tools.mkdir(parents=True)
-        for name in ("disable.sh", "restore.sh", "recovery.py"):
+        for name in ("disable.sh", "restore.sh", "recovery.py", "protected-packages.txt"):
             shutil.copy2(ROOT / "tools" / name, tools / name)
         (tools / "tv.py").write_text(FAKE_TV)
         # The scripts call tools/venv/bin/python; run the real interpreter, which imports the fake

@@ -37,6 +37,7 @@ class TvInputGuardTest(unittest.TestCase):
             tools = repo / "tools"
             tools.mkdir(parents=True)
             shutil.copy2(ROOT / "tools" / "disable.sh", tools / "disable.sh")
+            shutil.copy2(ROOT / "tools" / "protected-packages.txt", tools / "protected-packages.txt")
             client = tools / "venv" / "bin" / "python"
             client.parent.mkdir(parents=True)
             # Quote every name so the fake echoes it verbatim: the test is about what the script does
