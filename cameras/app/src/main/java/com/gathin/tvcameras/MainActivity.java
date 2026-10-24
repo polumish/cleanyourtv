@@ -125,8 +125,6 @@ public class MainActivity extends Activity {
         tile.collapse();
         for (CameraTile t : tiles) t.setVisibility(View.VISIBLE);
         if (started) startSequence(tile);
-        lastWidth = 0;
-        placeTiles();
         tile.requestFocus();
     }
 

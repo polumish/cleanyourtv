@@ -21,8 +21,11 @@
         <!-- Focus ring: bright, thick, invisible until focused. -->
         <Shape x="288" y="216" name="FocusRing" id="0:21" opacity="0">
             <Rectangle width="570" height="426" originX="0.5" originY="0.5" cornerRadiusTL="36" name="Path"/>
+            <Stroke thickness="18" name="Glow">
+                <SolidColor colorValue="404DB8FF" name="Color"/>
+            </Stroke>
             <Stroke thickness="6" name="Stroke">
-                <SolidColor colorValue="F2FFFFFF" name="Color"/>
+                <SolidColor colorValue="FF4DB8FF" name="Color"/>
             </Stroke>
         </Shape>
 
@@ -45,7 +48,18 @@
                 <EntryState x="0" y="0">
                     <StateTransition stateToId="0:50"/>
                 </EntryState>
+                <!-- Rest: thin frame only. Enlarging hides the frame (180 ms); focus fades the ring in (180 ms). -->
                 <AnimationState x="200" y="0" animationId="0:60" id="0:50">
+                    <StateTransition stateToId="0:54" duration="180">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:44" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="true"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
                     <StateTransition stateToId="0:51" duration="180">
                         <TransitionViewModelCondition>
                             <TransitionPropertyViewModelComparator>
@@ -58,11 +72,34 @@
                     </StateTransition>
                 </AnimationState>
                 <AnimationState x="400" y="0" animationId="0:61" id="0:51">
+                    <StateTransition stateToId="0:54" duration="180">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:44" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="true"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
                     <StateTransition stateToId="0:50" duration="120">
                         <TransitionViewModelCondition>
                             <TransitionPropertyViewModelComparator>
                                 <BindablePropertyBoolean>
                                     <DataBindContext sourcePathIds="0:40-0:42" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="false"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
+                </AnimationState>
+                <!-- Enlarged: frame and ring gone. Shrinking brings the frame back (120 ms, exit shorter than enter). -->
+                <AnimationState x="300" y="140" animationId="0:64" id="0:54">
+                    <StateTransition stateToId="0:50" duration="120">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:44" propertyKey="634"/>
                                 </BindablePropertyBoolean>
                             </TransitionPropertyViewModelComparator>
                             <TransitionValueBooleanComparator value="false"/>
@@ -110,10 +147,24 @@
             <KeyedObject objectId="0:21">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="0" interpolationType="linear"/></KeyedProperty>
             </KeyedObject>
+            <KeyedObject objectId="0:30">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
         </LinearAnimation>
         <LinearAnimation duration="1" name="RingOn" id="0:61">
             <KeyedObject objectId="0:21">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:30">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+        <LinearAnimation duration="1" name="FrameOff" id="0:64">
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:30">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0" interpolationType="linear"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
         <LinearAnimation duration="1" name="ShimmerOff" id="0:62">
@@ -135,9 +186,11 @@
     <ViewModel defaultInstanceId="0:41" name="TileState" id="0:40">
         <ViewModelPropertyBoolean name="focused" id="0:42"/>
         <ViewModelPropertyBoolean name="connecting" id="0:43"/>
+        <ViewModelPropertyBoolean name="expanded" id="0:44"/>
         <ViewModelInstance exports="true" name="Default" id="0:41">
             <ViewModelInstanceBoolean propertyValue="false" viewModelPropertyId="0:42"/>
             <ViewModelInstanceBoolean propertyValue="true" viewModelPropertyId="0:43"/>
+            <ViewModelInstanceBoolean propertyValue="false" viewModelPropertyId="0:44"/>
         </ViewModelInstance>
     </ViewModel>
 </Rive>

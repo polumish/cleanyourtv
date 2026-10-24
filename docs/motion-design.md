@@ -17,7 +17,7 @@ Source: ui-ux-pro-max (style `liquid-glass`, UX rules `duration-timing`, `exit-f
 | glass fill | white 10 % |
 | glass edge (rest / focus) | white 35 % 1.5 dp / white 95 % 3 dp |
 | text primary / secondary | #F2F5FA / 70 % |
-| focus accent | #9CC9FF |
+| focus accent (highlight) | sky blue #4DB8FF, 6 dp ring plus a soft 18 dp halo at 25 % |
 | stale / warning | #FFBE3C |
 | radius | tile 18 dp, dock 28 dp |
 | min label size | 16 sp on tiles (32 px at 1080p), 22 sp enlarged |

@@ -60,6 +60,7 @@ final class CameraTile extends FrameLayout {
     private boolean riveFocused;
     private boolean riveConnecting = true;
     private boolean riveReady;
+    private boolean riveExpanded;
     private int videoWidth;
     private int videoHeight;
     private int fullWidth;
@@ -120,6 +121,7 @@ final class CameraTile extends FrameLayout {
             addView(rive, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             rive.postDelayed(this::applyRive, 300);
         } catch (Throwable e) {
+            android.util.Log.w("CameraTile", "Rive view failed: " + e);
             rive = null;   // no Rive: the plain frame below does the job
         }
 
@@ -214,16 +216,15 @@ final class CameraTile extends FrameLayout {
         return expanded;
     }
 
+    /** Grows to the whole screen in 280 ms (decelerating); the Rive scene fades the frame out meanwhile. */
     void expand() {
         if (expanded) return;
         expanded = true;
-        collapsedParams = getLayoutParams();
-        setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        outlineRadius = 0f;
-        invalidateOutline();
+        riveExpanded = true;
+        applyRive();
+        ViewGroup.LayoutParams current = getLayoutParams();
+        collapsedParams = current;
         setForeground(null);
-        if (rive != null) rive.setVisibility(GONE);
         label.setTextSize(22f);
         setKeepScreenOn(true);
         player.setMuted(false);
@@ -232,11 +233,15 @@ final class CameraTile extends FrameLayout {
             fullSurface.setVisibility(VISIBLE);
             fullPlayer.start();
         }
+        morph(current, null, 280, new android.view.animation.DecelerateInterpolator(1.6f), 0f);
     }
 
+    /** Shrinks back in 180 ms (accelerating): shorter than the way in. */
     void collapse() {
         if (!expanded) return;
         expanded = false;
+        riveExpanded = false;
+        applyRive();
         fullShown = false;
         if (fullPlayer != null) {
             fullPlayer.stop();
@@ -245,11 +250,80 @@ final class CameraTile extends FrameLayout {
         player.setMuted(true);
         setKeepScreenOn(false);
         label.setTextSize(16f);
-        outlineRadius = radius;
-        invalidateOutline();
         setForeground(riveReady ? null : frame);
-        if (rive != null) rive.setVisibility(VISIBLE);
-        setLayoutParams(collapsedParams);
+        morph(getLayoutParams(), collapsedParams, 180, new android.view.animation.AccelerateInterpolator(1.4f), radius);
+    }
+
+    private android.animation.ValueAnimator morph;
+
+    /**
+     * Animates the tile's bounds from where it is to {@code to} (null = the whole parent), and its corner radius to
+     * {@code endRadius}. Layout is animated by hand: a SurfaceView follows its parent's size every frame.
+     */
+    private void morph(ViewGroup.LayoutParams from, ViewGroup.LayoutParams to, long ms,
+                       android.animation.TimeInterpolator interpolator, final float endRadius) {
+        if (morph != null) morph.cancel();
+        final View parent = (View) getParent();
+        if (parent == null || !(from instanceof FrameLayout.LayoutParams) || getWidth() <= 0) {
+            applyFinal(to);
+            outlineRadius = endRadius;
+            invalidateOutline();
+            return;
+        }
+        final int fromL = getLeft();
+        final int fromT = getTop();
+        final int fromW = getWidth();
+        final int fromH = getHeight();
+        final int toL;
+        final int toT;
+        final int toW;
+        final int toH;
+        if (to == null) {
+            toL = 0;
+            toT = 0;
+            toW = parent.getWidth();
+            toH = parent.getHeight();
+        } else {
+            FrameLayout.LayoutParams t = (FrameLayout.LayoutParams) to;
+            toL = t.leftMargin;
+            toT = t.topMargin;
+            toW = t.width;
+            toH = t.height;
+        }
+        final float fromRadius = outlineRadius;
+        morph = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        morph.setDuration(ms);
+        morph.setInterpolator(interpolator);
+        morph.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(
+                    Math.round(fromW + (toW - fromW) * f), Math.round(fromH + (toH - fromH) * f),
+                    Gravity.TOP | Gravity.START);
+            p.leftMargin = Math.round(fromL + (toL - fromL) * f);
+            p.topMargin = Math.round(fromT + (toT - fromT) * f);
+            setLayoutParams(p);
+            outlineRadius = fromRadius + (endRadius - fromRadius) * f;
+            invalidateOutline();
+        });
+        morph.addListener(new android.animation.AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(android.animation.Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                if (!cancelled) applyFinal(to);
+            }
+        });
+        morph.start();
+    }
+
+    private void applyFinal(ViewGroup.LayoutParams to) {
+        setLayoutParams(to != null ? to : new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     /** Each picture keeps its own shape inside the tile; bars where it does not fill it. */
@@ -290,17 +364,30 @@ final class CameraTile extends FrameLayout {
     private void applyRive() {
         if (rive == null) return;
         try {
-            if (rive.getController().getStateMachines().isEmpty()) return;
+            if (rive.getController().getStateMachines().isEmpty()) {
+                android.util.Log.w("CameraTile", "Rive: no state machines, file=" + (rive.getController().getFile() != null));
+                return;
+            }
             ViewModelInstance vmi = rive.getController().getStateMachines().get(0).getViewModelInstance();
-            if (vmi == null) return;
+            if (vmi == null) {
+                android.util.Log.w("CameraTile", "Rive: no view model instance yet");
+                return;
+            }
             vmi.getBooleanProperty("focused").setValue(riveFocused);
+            vmi.getBooleanProperty("expanded").setValue(riveExpanded);
             if (!riveReady) {
                 riveReady = true;
                 if (!expanded) setForeground(null);   // Rive draws the frame from now on
             }
             vmi.getBooleanProperty("connecting").setValue(riveConnecting && cached.getVisibility() != VISIBLE);
-        } catch (Throwable ignored) {
+            if (rive.getController().getPlayingStateMachines().isEmpty()) {
+                // the machine had settled; a changed property alone does not wake it in this runtime
+                rive.play(rive.getController().getStateMachines().get(0).getName(), app.rive.runtime.kotlin.core.Loop.AUTO,
+                        app.rive.runtime.kotlin.core.Direction.AUTO, true, false);
+            }
+        } catch (Throwable e) {
             // the scene is decoration: never let it break the tile
+            android.util.Log.w("CameraTile", "Rive state not applied: " + e);
         }
     }
 
