@@ -25,6 +25,8 @@ public class MainActivity extends Activity {
     private final List<CameraTile> tiles = new ArrayList<>();
     private int lastWidth;
     private int lastHeight;
+    /** Start the four streams one after another (true) or all at once (false). */
+    private static final boolean SEQUENTIAL = false;
     private boolean started;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int startToken;
@@ -44,7 +46,7 @@ public class MainActivity extends Activity {
         tiles.clear();
         List<CameraStore.Camera> cameras = CameraStore.load(this);
         for (int i = 0; i < CameraStore.COUNT; i++) {
-            CameraTile tile = new CameraTile(this, cameras.get(i));
+            CameraTile tile = new CameraTile(this, cameras.get(i), new java.io.File(getCacheDir(), "snapshot-" + Integer.toHexString(cameras.get(i).tileUrl.hashCode()) + ".jpg"));
             tile.setOnClickListener(v -> expand((CameraTile) v));
             tile.setOnLongClickListener(v -> {
                 openSettings();
@@ -150,6 +152,10 @@ public class MainActivity extends Activity {
         final int token = ++startToken;
         List<CameraTile> order = new ArrayList<>();
         for (CameraTile t : tiles) if (t != except) order.add(t);
+        if (!SEQUENTIAL) {
+            for (CameraTile t : order) t.start();
+            return;
+        }
         startStep(order, 0, token);
     }
 
@@ -176,6 +182,13 @@ public class MainActivity extends Activity {
         // Rebuilt every time: the settings screen may have changed a stream.
         buildTiles();
         startSequence(null);
+    }
+
+    @Override
+    protected void onPause() {
+        // Before the streams stop: keep each camera's last picture for an instant start next time.
+        for (CameraTile t : tiles) t.saveSnapshot();
+        super.onPause();
     }
 
     @Override
