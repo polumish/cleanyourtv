@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +26,8 @@ public class MainActivity extends Activity {
     private int lastWidth;
     private int lastHeight;
     private boolean started;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private int startToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,10 +115,8 @@ public class MainActivity extends Activity {
 
     private void collapse(CameraTile tile) {
         tile.collapse();
-        for (CameraTile t : tiles) {
-            t.setVisibility(View.VISIBLE);
-            if (t != tile && started) t.start();
-        }
+        for (CameraTile t : tiles) t.setVisibility(View.VISIBLE);
+        if (started) startSequence(tile);
         lastWidth = 0;
         placeTiles();
         tile.requestFocus();
@@ -140,6 +142,29 @@ public class MainActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
+    /**
+     * Streams start one after another in grid order: the next one when the previous shows its first picture, or after
+     * three seconds if it does not (a camera that is down must not hold the rest back). {@code except} is already playing.
+     */
+    private void startSequence(CameraTile except) {
+        final int token = ++startToken;
+        List<CameraTile> order = new ArrayList<>();
+        for (CameraTile t : tiles) if (t != except) order.add(t);
+        startStep(order, 0, token);
+    }
+
+    private void startStep(List<CameraTile> order, int index, int token) {
+        if (token != startToken || !started || index >= order.size()) return;
+        final boolean[] advanced = {false};
+        Runnable next = () -> {
+            if (advanced[0]) return;
+            advanced[0] = true;
+            startStep(order, index + 1, token);
+        };
+        order.get(index).start(next);
+        handler.postDelayed(next, 3000);
+    }
+
     private void openSettings() {
         startActivity(new Intent(this, SettingsActivity.class));
     }
@@ -150,12 +175,13 @@ public class MainActivity extends Activity {
         started = true;
         // Rebuilt every time: the settings screen may have changed a stream.
         buildTiles();
-        for (CameraTile t : tiles) t.start();
+        startSequence(null);
     }
 
     @Override
     protected void onStop() {
         started = false;
+        startToken++;
         for (CameraTile t : tiles) t.stop();
         super.onStop();
     }

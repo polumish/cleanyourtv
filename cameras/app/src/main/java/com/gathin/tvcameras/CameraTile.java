@@ -32,6 +32,7 @@ final class CameraTile extends FrameLayout {
     private float outlineRadius;
     private boolean expanded;
     private boolean fullShown;
+    private Runnable firstPicture;
     private int videoWidth;
     private int videoHeight;
     private int fullWidth;
@@ -93,6 +94,11 @@ final class CameraTile extends FrameLayout {
         player = new RtspPlayer(context, surface, false, new RtspPlayer.Listener() {
             @Override
             public void onState(RtspPlayer.State state) {
+                if (state == RtspPlayer.State.PLAYING && firstPicture != null) {
+                    Runnable r = firstPicture;
+                    firstPicture = null;
+                    r.run();
+                }
                 if (fullShown) return;
                 status.setVisibility(state == RtspPlayer.State.PLAYING ? GONE : VISIBLE);
                 status.setText(state == RtspPlayer.State.RETRYING ? R.string.no_signal : R.string.connecting);
@@ -202,7 +208,14 @@ final class CameraTile extends FrameLayout {
         player.start();
     }
 
+    /** Starts the stream and calls {@code onFirstPicture} once, when the first picture of the small stream shows. */
+    void start(Runnable onFirstPicture) {
+        firstPicture = onFirstPicture;
+        player.start();
+    }
+
     void stop() {
+        firstPicture = null;
         collapse();
         if (fullPlayer != null) fullPlayer.stop();
         player.stop();
