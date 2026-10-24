@@ -54,6 +54,7 @@ import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.SoundEffectConstants;
 import android.view.ViewGroup;
@@ -1082,6 +1083,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Blue the glass turns while reorder mode is on. */
     private static final int REORDER_ACCENT = 0xFF6EC1FF;
+
+    private float cameraTouchX;
+    private float cameraTouchY;
+    private boolean cameraTouchDown;
+
+    /**
+     * Touch and mouse (emulator, tablets): the grid fills the screen and swallows every touch, including those on the
+     * camera tile that sits under it, so a tap on the tile is caught here. A drag that starts on the tile still scrolls.
+     */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (cameraTile != null && cameraTile.getVisibility() == View.VISIBLE && !cameraTile.isExpanded()) {
+            int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                android.graphics.Rect r = new android.graphics.Rect();
+                cameraTouchDown = cameraTile.getGlobalVisibleRect(r) && r.contains((int) ev.getRawX(), (int) ev.getRawY());
+                cameraTouchX = ev.getRawX();
+                cameraTouchY = ev.getRawY();
+            } else if (action == MotionEvent.ACTION_UP && cameraTouchDown) {
+                cameraTouchDown = false;
+                float slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+                if (Math.abs(ev.getRawX() - cameraTouchX) <= slop && Math.abs(ev.getRawY() - cameraTouchY) <= slop) {
+                    toggleCamera();
+                    return true;
+                }
+            } else if (action == MotionEvent.ACTION_CANCEL) {
+                cameraTouchDown = false;
+            }
+        }
+        return super.dispatchTouchEvent(ev);
+    }
 
     /**
      * Reorder mode (top-bar button). While it is on, every key comes here first:

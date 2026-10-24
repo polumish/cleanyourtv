@@ -39,6 +39,11 @@ final class RtspPlayer implements SurfaceHolder.Callback {
     private static final String TAG = "RtspPlayer";
     /** A camera that answers nothing for this long is treated as unreachable. */
     private static final long CONNECT_TIMEOUT_MS = 20_000L;
+    /**
+     * Seen in the emulator: data arrives but no picture follows for the full timeout. The first try therefore gives
+     * up early and reconnects, which then shows a picture within a second or two; later tries wait the full time.
+     */
+    private static final long FIRST_TRY_TIMEOUT_MS = 8_000L;
     /** Buffering for this long after playback began means the stream stalled. */
     private static final long STALL_TIMEOUT_MS = 12_000L;
 
@@ -142,7 +147,7 @@ final class RtspPlayer implements SurfaceHolder.Callback {
             p.setPlayWhenReady(true);
             p.prepare();
             setState(State.CONNECTING);
-            handler.postDelayed(timeout, CONNECT_TIMEOUT_MS);
+            handler.postDelayed(timeout, failures == 0 ? FIRST_TRY_TIMEOUT_MS : CONNECT_TIMEOUT_MS);
         } catch (RuntimeException e) {
             fail(e.getClass().getSimpleName());
         }
