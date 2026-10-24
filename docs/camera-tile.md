@@ -16,7 +16,7 @@ default** and built only when a theme names a camera, so a launcher without the 
 - **The tile** plays `camera_rtsp_url`, muted. Pick the camera's *sub stream*: low resolution and bitrate (a 640×480
   H.264 stream at 15 fps is about 0.3 Mbit/s). The picture is decoded by the TV's hardware decoder; nothing is
   transcoded.
-- **OK on the tile** opens `camera_full_url` full screen, with sound. Without that key the tile's own stream opens.
+- **OK on the tile** enlarges the same live picture to the whole screen and turns the sound on, with no reconnect (instant). OK or Back shrinks it. `camera_full_url` is no longer used.
   Back returns to Home.
 - **Remote:** Down from the top pills moves to the tile, Down from the tile to the dock, Up to the pills.
 - **When it plays:** only while Home is on screen. In an app, on the screensaver or with the screen off the stream is

@@ -3,17 +3,18 @@ package com.gathin.tvhome;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import androidx.annotation.OptIn;
-import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.rtsp.RtspMediaSource;
 
@@ -43,7 +44,7 @@ final class RtspPlayer implements SurfaceHolder.Callback {
 
     private final Context context;
     private final SurfaceHolder holder;
-    private final boolean audio;
+    private boolean muted;
     private final Listener listener;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable timeout = () -> fail("timeout");
@@ -54,16 +55,23 @@ final class RtspPlayer implements SurfaceHolder.Callback {
     private boolean surfaceReady;
     private ExoPlayer player;
     private int generation;
+    private long openedAt;
     private int failures;
     private State state = State.IDLE;
 
     RtspPlayer(Context context, SurfaceView view, boolean audio, Listener listener) {
         this.context = context.getApplicationContext();
         this.holder = view.getHolder();
-        this.audio = audio;
+        this.muted = !audio;
         this.listener = listener;
         holder.addCallback(this);
         surfaceReady = holder.getSurface() != null && holder.getSurface().isValid();
+    }
+
+    /** The picture keeps playing; only the volume changes, so unmuting is instant. */
+    void setMuted(boolean muted) {
+        this.muted = muted;
+        if (player != null) player.setVolume(muted ? 0f : 1f);
     }
 
     void setUrl(String url) {
@@ -86,14 +94,14 @@ final class RtspPlayer implements SurfaceHolder.Callback {
         if (!wanted || !surfaceReady || url.isEmpty() || player != null) return;
         handler.removeCallbacks(retry);
         final int gen = ++generation;
+        openedAt = SystemClock.elapsedRealtime();
         try {
-            ExoPlayer p = new ExoPlayer.Builder(context).build();
+            // A live camera needs no cushion: start after a quarter second of media instead of the default 2.5 s.
+            ExoPlayer p = new ExoPlayer.Builder(context)
+                    .setLoadControl(new DefaultLoadControl.Builder().setBufferDurationsMs(1000, 3000, 250, 500).build())
+                    .build();
             player = p;
-            if (!audio) {
-                p.setTrackSelectionParameters(p.getTrackSelectionParameters().buildUpon()
-                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build());
-                p.setVolume(0f);
-            }
+            p.setVolume(muted ? 0f : 1f);
             p.setVideoSurfaceHolder(holder);
             p.addListener(new Player.Listener() {
                 @Override
@@ -101,6 +109,7 @@ final class RtspPlayer implements SurfaceHolder.Callback {
                     if (gen != generation) return;
                     handler.removeCallbacks(timeout);
                     failures = 0;
+                    Log.i(TAG, "first picture after " + (SystemClock.elapsedRealtime() - openedAt) + " ms");
                     setState(State.PLAYING);
                 }
 
@@ -112,6 +121,7 @@ final class RtspPlayer implements SurfaceHolder.Callback {
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
                     if (gen != generation) return;
+                    Log.i(TAG, "state " + playbackState + " at " + (SystemClock.elapsedRealtime() - openedAt) + " ms");
                     handler.removeCallbacks(timeout);
                     if (playbackState == Player.STATE_BUFFERING && state == State.PLAYING) {
                         handler.postDelayed(timeout, STALL_TIMEOUT_MS);

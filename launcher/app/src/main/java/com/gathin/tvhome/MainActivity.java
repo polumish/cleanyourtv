@@ -532,7 +532,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                if (cameraTile == null) return;
+                if (cameraTile == null || cameraTile.isExpanded()) return;
                 float ty = rv.canScrollVertically(-1) ? Math.min(0f, cameraTile.getTranslationY() - dy) : 0f;
                 cameraTile.setTranslationY(ty);
                 // Once its top edge passes under the top-bar buttons it fades out; hidden, its stream stops.
@@ -611,9 +611,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cameraParams.topMargin = Math.round(136 * density);
             cameraTile.setLayoutParams(cameraParams);
             cameraTile.configure(camera);
-            cameraTile.setOnClickListener(v -> openCamera());
+            cameraTile.setOnClickListener(v -> toggleCamera());
             cameraTile.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (cameraTile.isExpanded()) {
+                    // Enlarged: only Back and OK do anything; the arrows must not move focus to hidden views.
+                    return keyCode >= KeyEvent.KEYCODE_DPAD_UP && keyCode <= KeyEvent.KEYCODE_DPAD_RIGHT;
+                }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     btnSettings.requestFocus();
                     return true;
@@ -969,6 +973,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
+        if (cameraTile.isExpanded()) setCameraExpanded(false);
         cameraTile.stop();
         stopAmbientAnimation();
         hero.animate().cancel();
@@ -984,12 +989,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openPopup != null) openPopup.dismiss();
     }
 
-    /** OK on the camera tile: the same camera full screen, with sound. */
-    private void openCamera() {
-        Intent intent = new Intent(this, CameraActivity.class)
-                .putExtra(CameraActivity.EXTRA_URL, camera.fullUrl)
-                .putExtra(CameraActivity.EXTRA_LABEL, camera.label);
-        startActivity(intent);
+    /** OK on the camera tile: the same live picture enlarged to the screen with sound; OK or Back shrinks it. */
+    private void toggleCamera() {
+        if (cameraTile.isExpanded()) setCameraExpanded(false);
+        else setCameraExpanded(true);
+    }
+
+    private void setCameraExpanded(boolean expand) {
+        if (expand) cameraTile.expand();
+        else cameraTile.collapse();
+        int rest = cameraTile.isExpanded() ? View.INVISIBLE : View.VISIBLE;
+        findViewById(R.id.mainColumn).setVisibility(rest);
+        glass.setVisibility(rest);
+        if (!cameraTile.isExpanded()) cameraTile.requestFocus();
     }
 
     @Override
@@ -1347,7 +1359,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onBackPressed() {
-        // Home screen: Back goes nowhere.
+        // Home screen: Back goes nowhere, except out of the enlarged camera.
+        if (cameraTile != null && cameraTile.isExpanded()) setCameraExpanded(false);
     }
 
     // ---- glass highlight -------------------------------------------------------------------------
