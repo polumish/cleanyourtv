@@ -146,7 +146,7 @@ final class CameraTile extends FrameLayout {
         states.addState(new int[]{android.R.attr.state_focused}, focused);
         states.addState(new int[]{}, resting);
         frame = states;
-        setForeground(rive == null ? frame : null);
+        setForeground(frame);   // the plain frame until the Rive scene is up (see applyRive)
 
         player = new RtspPlayer(context, surface, false, new RtspPlayer.Listener() {
             @Override
