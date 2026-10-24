@@ -2,11 +2,14 @@ package com.gathin.tvhome;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.SurfaceView;
+import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -26,6 +29,14 @@ public class CameraTile extends FrameLayout {
         float density = getResources().getDisplayMetrics().density;
         setFocusable(true);
         setClipChildren(true);
+        final float radius = 18 * density;
+        setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+            }
+        });
+        setClipToOutline(true);
         surface = new SurfaceView(context);
         addView(surface, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         status = new TextView(context);
@@ -38,10 +49,12 @@ public class CameraTile extends FrameLayout {
 
         GradientDrawable focused = new GradientDrawable();
         focused.setColor(Color.TRANSPARENT);
+        focused.setCornerRadius(radius);
         focused.setStroke(Math.round(3 * density), 0xF2FFFFFF);
         GradientDrawable resting = new GradientDrawable();
         resting.setColor(Color.TRANSPARENT);
-        resting.setStroke(Math.round(1 * density), 0x33FFFFFF);
+        resting.setCornerRadius(radius);
+        resting.setStroke(Math.round(1.5f * density), 0xA6FFFFFF);
         StateListDrawable frame = new StateListDrawable();
         frame.addState(new int[]{android.R.attr.state_focused}, focused);
         frame.addState(new int[]{}, resting);

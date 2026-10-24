@@ -1,23 +1,30 @@
 package com.gathin.tvhome;
 
 import android.content.Context;
-import android.media.AudioAttributes;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import java.io.IOException;
+import androidx.annotation.OptIn;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.rtsp.RtspMediaSource;
 
 /**
- * Plays one rtsp:// stream into a SurfaceView with the platform's own MediaPlayer, so no player library is added
- * to the launcher. The picture is decoded by the TV's hardware decoder. It runs only between {@link #start()} and
+ * Plays one rtsp:// stream into a SurfaceView with Media3 ExoPlayer. The platform MediaPlayer cannot be used: it
+ * asks for UDP, which go2rtc's RTSP server refuses (461), and it does not know go2rtc's AAC (MPEG4-GENERIC).
+ * ExoPlayer is told to use RTP over TCP. The picture is decoded by the TV's hardware decoder. It runs only between {@link #start()} and
  * {@link #stop()}, opens a connection only while the surface exists, and reconnects after a failure with a growing
  * pause ({@link CameraSettings#retryDelayMs}). All calls come from the main thread.
  */
+@OptIn(markerClass = UnstableApi.class)
 final class RtspPlayer implements SurfaceHolder.Callback {
     enum State { IDLE, CONNECTING, PLAYING, RETRYING }
 
@@ -45,7 +52,7 @@ final class RtspPlayer implements SurfaceHolder.Callback {
     private String url = "";
     private boolean wanted;
     private boolean surfaceReady;
-    private MediaPlayer player;
+    private ExoPlayer player;
     private int generation;
     private int failures;
     private State state = State.IDLE;
@@ -79,51 +86,54 @@ final class RtspPlayer implements SurfaceHolder.Callback {
         if (!wanted || !surfaceReady || url.isEmpty() || player != null) return;
         handler.removeCallbacks(retry);
         final int gen = ++generation;
-        MediaPlayer p = new MediaPlayer();
-        player = p;
         try {
-            p.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                    .build());
-            p.setDisplay(holder);
-            if (!audio) p.setVolume(0f, 0f);
-            p.setOnPreparedListener(mp -> {
-                if (gen != generation) return;
-                mp.start();
-                // The first picture must follow soon; MEDIA_INFO_VIDEO_RENDERING_START cancels this.
-                handler.removeCallbacks(timeout);
-                handler.postDelayed(timeout, CONNECT_TIMEOUT_MS);
-            });
-            p.setOnVideoSizeChangedListener((mp, w, h) -> {
-                if (gen == generation && w > 0 && h > 0) listener.onVideoSize(w, h);
-            });
-            p.setOnInfoListener((mp, what, extra) -> {
-                if (gen != generation) return false;
-                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+            ExoPlayer p = new ExoPlayer.Builder(context).build();
+            player = p;
+            if (!audio) {
+                p.setTrackSelectionParameters(p.getTrackSelectionParameters().buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build());
+                p.setVolume(0f);
+            }
+            p.setVideoSurfaceHolder(holder);
+            p.addListener(new Player.Listener() {
+                @Override
+                public void onRenderedFirstFrame() {
+                    if (gen != generation) return;
                     handler.removeCallbacks(timeout);
                     failures = 0;
                     setState(State.PLAYING);
-                } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
-                    handler.removeCallbacks(timeout);
-                    handler.postDelayed(timeout, STALL_TIMEOUT_MS);
-                } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
-                    handler.removeCallbacks(timeout);
                 }
-                return false;
+
+                @Override
+                public void onVideoSizeChanged(VideoSize size) {
+                    if (gen == generation && size.width > 0 && size.height > 0) listener.onVideoSize(size.width, size.height);
+                }
+
+                @Override
+                public void onPlaybackStateChanged(int playbackState) {
+                    if (gen != generation) return;
+                    handler.removeCallbacks(timeout);
+                    if (playbackState == Player.STATE_BUFFERING && state == State.PLAYING) {
+                        handler.postDelayed(timeout, STALL_TIMEOUT_MS);
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        fail("ended");
+                    }
+                }
+
+                @Override
+                public void onPlayerError(PlaybackException error) {
+                    if (gen == generation) fail("error " + error.getErrorCodeName());
+                }
             });
-            p.setOnErrorListener((mp, what, extra) -> {
-                if (gen == generation) fail("error " + what + "/" + extra);
-                return true;
-            });
-            p.setOnCompletionListener(mp -> {
-                if (gen == generation) fail("ended");
-            });
-            p.setDataSource(context, Uri.parse(url));
-            p.prepareAsync();
+            p.setMediaSource(new RtspMediaSource.Factory()
+                    .setForceUseRtpTcp(true)
+                    .setTimeoutMs(CONNECT_TIMEOUT_MS)
+                    .createMediaSource(MediaItem.fromUri(url)));
+            p.setPlayWhenReady(true);
+            p.prepare();
             setState(State.CONNECTING);
             handler.postDelayed(timeout, CONNECT_TIMEOUT_MS);
-        } catch (IOException | RuntimeException e) {
+        } catch (RuntimeException e) {
             fail(e.getClass().getSimpleName());
         }
     }
@@ -136,33 +146,19 @@ final class RtspPlayer implements SurfaceHolder.Callback {
         handler.postDelayed(retry, CameraSettings.retryDelayMs(failures++));
     }
 
-    /** Lets go of the current player; its network teardown can take a while, so that runs off the main thread. */
+    /** Lets go of the current player (ExoPlayer releases its network session on its own thread). */
     private void release() {
         generation++;
         handler.removeCallbacks(timeout);
         handler.removeCallbacks(retry);
-        final MediaPlayer p = player;
+        final ExoPlayer p = player;
         player = null;
         if (p == null) return;
         try {
-            p.setOnPreparedListener(null);
-            p.setOnInfoListener(null);
-            p.setOnErrorListener(null);
-            p.setOnCompletionListener(null);
-            p.setOnVideoSizeChangedListener(null);
-            p.setDisplay(null);
+            p.release();
         } catch (RuntimeException ignored) {
-            // already unusable: release it anyway
+            // nothing left to do
         }
-        Thread t = new Thread(() -> {
-            try {
-                p.release();
-            } catch (RuntimeException ignored) {
-                // nothing left to do
-            }
-        }, "rtsp-release");
-        t.setDaemon(true);
-        t.start();
     }
 
     private void setState(State next) {

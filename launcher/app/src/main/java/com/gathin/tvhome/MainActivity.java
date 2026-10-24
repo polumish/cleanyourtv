@@ -528,6 +528,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
 
+        // The camera tile belongs to the page: it scrolls up with the app rows instead of floating over them.
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                if (cameraTile == null) return;
+                float ty = rv.canScrollVertically(-1) ? Math.min(0f, cameraTile.getTranslationY() - dy) : 0f;
+                cameraTile.setTranslationY(ty);
+                // Once its top edge passes under the top-bar buttons it fades out; hidden, its stream stops.
+                float fade = Math.max(0f, Math.min(1f, 1f + (ty + 8 * density) / (24 * density)));
+                cameraTile.setAlpha(fade);
+                int vis = fade <= 0f ? View.INVISIBLE : View.VISIBLE;
+                if (cameraTile.getVisibility() != vis && camera.enabled()) cameraTile.setVisibility(vis);
+            }
+        });
+
         // Liquid feel: soft springs on the highlight's position.
         springX = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_X);
         springY = new SpringAnimation(glass, new FloatPropertyCompat<View>("glassContentY") {
@@ -593,7 +608,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     Math.round(camera.widthDp * density), Math.round(camera.heightDp() * density),
                     android.view.Gravity.TOP | android.view.Gravity.END);
             cameraParams.setMarginEnd(Math.round(56 * density));
-            cameraParams.topMargin = Math.round(112 * density);
+            cameraParams.topMargin = Math.round(136 * density);
             cameraTile.setLayoutParams(cameraParams);
             cameraTile.configure(camera);
             cameraTile.setOnClickListener(v -> openCamera());
