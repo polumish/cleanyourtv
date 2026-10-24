@@ -22,6 +22,9 @@ import android.widget.TextView;
  */
 public class CameraTile extends FrameLayout {
     private final SurfaceView surface;
+    /** Sharp stream shown over the tile's own while enlarged (camera_full_url); only built when it differs. */
+    private final SurfaceView fullSurface;
+    private RtspPlayer fullPlayer;
     private final TextView status;
     private final TextView name;
     private final float radius;
@@ -31,6 +34,8 @@ public class CameraTile extends FrameLayout {
     private boolean expanded;
     private int videoWidth;
     private int videoHeight;
+    private int fullWidth;
+    private int fullHeight;
     private ViewGroup.LayoutParams collapsedParams;
 
     public CameraTile(Context context, AttributeSet attrs) {
@@ -49,6 +54,11 @@ public class CameraTile extends FrameLayout {
         setClipToOutline(true);
         surface = new SurfaceView(context);
         addView(surface, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        fullSurface = new SurfaceView(context);
+        fullSurface.setZOrderMediaOverlay(true);
+        fullSurface.setVisibility(INVISIBLE);
+        addView(fullSurface, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
         status = new TextView(context);
         status.setTextColor(0xCCFFFFFF);
         status.setTextSize(14f);
@@ -99,12 +109,22 @@ public class CameraTile extends FrameLayout {
         setForeground(null);
         name.setVisibility(name.getText().length() > 0 ? VISIBLE : GONE);
         setKeepScreenOn(true);
+        // The tile's own picture and sound take over at once; the sharp stream joins in when its first picture is ready.
         player.setMuted(false);
+        if (fullPlayer != null) {
+            fullPlayer.setMuted(true);
+            fullSurface.setVisibility(VISIBLE);
+            fullPlayer.start();
+        }
     }
 
     void collapse() {
         if (!expanded) return;
         expanded = false;
+        if (fullPlayer != null) {
+            fullPlayer.stop();
+            fullSurface.setVisibility(INVISIBLE);
+        }
         player.setMuted(true);
         setKeepScreenOn(false);
         name.setVisibility(GONE);
@@ -115,14 +135,21 @@ public class CameraTile extends FrameLayout {
         setLayoutParams(collapsedParams);
         surface.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        fullSurface.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
     }
 
-    /** Keeps the picture's own shape while enlarged; bars where it does not fill the screen. */
+    /** Keeps each picture's own shape while enlarged; bars where it does not fill the screen. */
     private void fit() {
-        if (!expanded || videoWidth <= 0 || videoHeight <= 0 || getWidth() <= 0 || getHeight() <= 0) return;
-        float scale = Math.min((float) getWidth() / videoWidth, (float) getHeight() / videoHeight);
-        LayoutParams p = new LayoutParams(Math.round(videoWidth * scale), Math.round(videoHeight * scale), Gravity.CENTER);
-        surface.setLayoutParams(p);
+        if (!expanded || getWidth() <= 0 || getHeight() <= 0) return;
+        fitSurface(surface, videoWidth, videoHeight);
+        fitSurface(fullSurface, fullWidth, fullHeight);
+    }
+
+    private void fitSurface(SurfaceView view, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+        float scale = Math.min((float) getWidth() / width, (float) getHeight() / height);
+        view.setLayoutParams(new LayoutParams(Math.round(width * scale), Math.round(height * scale), Gravity.CENTER));
     }
 
     /** Sets the stream and the spoken name; the picture is silent, whatever the stream carries. */
@@ -146,6 +173,26 @@ public class CameraTile extends FrameLayout {
             }
         });
         player.setUrl(settings.url);
+        if (!settings.fullUrl.isEmpty() && !settings.fullUrl.equals(settings.url)) {
+            fullPlayer = new RtspPlayer(getContext(), fullSurface, false, new RtspPlayer.Listener() {
+                @Override
+                public void onState(RtspPlayer.State state) {
+                    // Sharp picture ready: it covers the tile's own stream, which hands the sound over.
+                    if (state == RtspPlayer.State.PLAYING && expanded) {
+                        fullPlayer.setMuted(false);
+                        player.setMuted(true);
+                    }
+                }
+
+                @Override
+                public void onVideoSize(int width, int height) {
+                    fullWidth = width;
+                    fullHeight = height;
+                    fit();
+                }
+            });
+            fullPlayer.setUrl(settings.fullUrl);
+        }
     }
 
     void start() {
@@ -154,6 +201,7 @@ public class CameraTile extends FrameLayout {
 
     void stop() {
         collapse();
+        if (fullPlayer != null) fullPlayer.stop();
         if (player != null) player.stop();
     }
 
