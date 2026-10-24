@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -16,6 +17,11 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
+
+import app.rive.runtime.kotlin.RiveAnimationView;
+import app.rive.runtime.kotlin.core.Alignment;
+import app.rive.runtime.kotlin.core.Fit;
+import app.rive.runtime.kotlin.core.ViewModelInstance;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,6 +55,11 @@ final class CameraTile extends FrameLayout {
     private final ImageView cached;
     private final TextView cachedAt;
     private final File cacheFile;
+    /** The tile's glass frame, focus ring and connecting shimmer (res/raw/camera_tile.riv); null if Rive cannot start. */
+    private RiveAnimationView rive;
+    private boolean riveFocused;
+    private boolean riveConnecting = true;
+    private boolean riveReady;
     private int videoWidth;
     private int videoHeight;
     private int fullWidth;
@@ -96,6 +107,22 @@ final class CameraTile extends FrameLayout {
         addView(cachedAt, atParams);
         showCached();
 
+        try {
+            rive = new RiveAnimationView.Builder(context)
+                    .setResource(R.raw.camera_tile)
+                    .setStateMachineName("Tile")
+                    .setAutoBind(true)
+                    .setAutoplay(true)
+                    .setFit(Fit.FILL)
+                    .setAlignment(Alignment.CENTER)
+                    .setTouchPassThrough(true)
+                    .build();
+            addView(rive, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            rive.postDelayed(this::applyRive, 300);
+        } catch (Throwable e) {
+            rive = null;   // no Rive: the plain frame below does the job
+        }
+
         status = text(context, 14f);
         status.setText(R.string.connecting);
         addView(status, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -119,7 +146,7 @@ final class CameraTile extends FrameLayout {
         states.addState(new int[]{android.R.attr.state_focused}, focused);
         states.addState(new int[]{}, resting);
         frame = states;
-        setForeground(frame);
+        setForeground(rive == null ? frame : null);
 
         player = new RtspPlayer(context, surface, false, new RtspPlayer.Listener() {
             @Override
@@ -133,6 +160,8 @@ final class CameraTile extends FrameLayout {
                     firstPicture = null;
                     r.run();
                 }
+                riveConnecting = state != RtspPlayer.State.PLAYING;
+                applyRive();
                 if (fullShown) return;
                 status.setVisibility(state == RtspPlayer.State.PLAYING ? GONE : VISIBLE);
                 status.setText(state == RtspPlayer.State.RETRYING ? R.string.no_signal : R.string.connecting);
@@ -194,6 +223,7 @@ final class CameraTile extends FrameLayout {
         outlineRadius = 0f;
         invalidateOutline();
         setForeground(null);
+        if (rive != null) rive.setVisibility(GONE);
         label.setTextSize(22f);
         setKeepScreenOn(true);
         player.setMuted(false);
@@ -217,7 +247,8 @@ final class CameraTile extends FrameLayout {
         label.setTextSize(16f);
         outlineRadius = radius;
         invalidateOutline();
-        setForeground(frame);
+        setForeground(riveReady ? null : frame);
+        if (rive != null) rive.setVisibility(VISIBLE);
         setLayoutParams(collapsedParams);
     }
 
@@ -246,6 +277,31 @@ final class CameraTile extends FrameLayout {
     void start(Runnable onFirstPicture) {
         firstPicture = onFirstPicture;
         player.start();
+    }
+
+    @Override
+    protected void onFocusChanged(boolean gainFocus, int direction, Rect previouslyFocusedRect) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+        riveFocused = gainFocus;
+        applyRive();
+    }
+
+    /** Pushes the focus and connecting flags into the Rive scene's view model. */
+    private void applyRive() {
+        if (rive == null) return;
+        try {
+            if (rive.getController().getStateMachines().isEmpty()) return;
+            ViewModelInstance vmi = rive.getController().getStateMachines().get(0).getViewModelInstance();
+            if (vmi == null) return;
+            vmi.getBooleanProperty("focused").setValue(riveFocused);
+            if (!riveReady) {
+                riveReady = true;
+                if (!expanded) setForeground(null);   // Rive draws the frame from now on
+            }
+            vmi.getBooleanProperty("connecting").setValue(riveConnecting && cached.getVisibility() != VISIBLE);
+        } catch (Throwable ignored) {
+            // the scene is decoration: never let it break the tile
+        }
     }
 
     /** Shows the picture saved by the last {@link #saveSnapshot()}, with the time it was taken, until live video arrives. */

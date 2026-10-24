@@ -1,0 +1,143 @@
+<Rive version="1" kind="fragment">
+    <!-- Camera tile chrome: a thin glass frame, a focus ring that fades in, and a shimmer sweep while connecting.
+         Transparent artboard: the video sits under it. Driven by two booleans, focused and connecting. -->
+    <Artboard defaultStateMachineId="0:7" viewModelId="0:40" viewModelInstanceId="0:41"
+              width="576" height="432" styleId="0:5" name="CameraTile" id="0:2">
+        <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+
+        <!-- Shimmer: a soft diagonal band, clipped to the frame. Declared first, so it paints on top. -->
+        <Shape x="-160" y="216" name="Shimmer" id="0:20" opacity="0">
+            <ClippingShape sourceId="0:30"/>
+            <Rectangle width="120" height="520" originX="0.5" originY="0.5" name="Path"/>
+            <Fill name="Fill">
+                <LinearGradient startX="-60" startY="0" endX="60" endY="0" name="Gradient">
+                    <GradientStop colorValue="00FFFFFF" position="0"/>
+                    <GradientStop colorValue="38FFFFFF" position="0.5"/>
+                    <GradientStop colorValue="00FFFFFF" position="1"/>
+                </LinearGradient>
+            </Fill>
+        </Shape>
+
+        <!-- Focus ring: bright, thick, invisible until focused. -->
+        <Shape x="288" y="216" name="FocusRing" id="0:21" opacity="0">
+            <Rectangle width="570" height="426" originX="0.5" originY="0.5" cornerRadiusTL="36" name="Path"/>
+            <Stroke thickness="6" name="Stroke">
+                <SolidColor colorValue="F2FFFFFF" name="Color"/>
+            </Stroke>
+        </Shape>
+
+        <!-- Resting glass frame: thin white edge and a faint fill, also the clipping source for the shimmer. -->
+        <Shape x="288" y="216" name="Frame" id="0:30">
+            <Rectangle width="570" height="426" originX="0.5" originY="0.5" cornerRadiusTL="36" name="Path"/>
+            <Stroke thickness="3" name="Stroke">
+                <SolidColor colorValue="A6FFFFFF" name="Color"/>
+            </Stroke>
+            <Fill name="Fill">
+                <SolidColor colorValue="0DFFFFFF" name="Color"/>
+            </Fill>
+        </Shape>
+
+        <StateMachine name="Tile" id="0:7">
+            <!-- Focus layer: ring opacity follows the focused flag; fade in 180 ms, out 120 ms (exit shorter than enter). -->
+            <StateMachineLayer name="Focus" id="0:8">
+                <AnyState x="400" y="-120"/>
+                <ExitState x="600" y="-120"/>
+                <EntryState x="0" y="0">
+                    <StateTransition stateToId="0:50"/>
+                </EntryState>
+                <AnimationState x="200" y="0" animationId="0:60" id="0:50">
+                    <StateTransition stateToId="0:51" duration="180">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:42" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="true"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
+                </AnimationState>
+                <AnimationState x="400" y="0" animationId="0:61" id="0:51">
+                    <StateTransition stateToId="0:50" duration="120">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:42" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="false"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
+                </AnimationState>
+            </StateMachineLayer>
+
+            <!-- Connect layer: the shimmer sweeps only while connecting, one 1.6 s pass after another. -->
+            <StateMachineLayer name="Connect" id="0:9">
+                <AnyState x="400" y="-120"/>
+                <ExitState x="600" y="-120"/>
+                <EntryState x="0" y="0">
+                    <StateTransition stateToId="0:52"/>
+                </EntryState>
+                <AnimationState x="200" y="0" animationId="0:62" id="0:52">
+                    <StateTransition stateToId="0:53" duration="120">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:43" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="true"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
+                </AnimationState>
+                <AnimationState x="400" y="0" animationId="0:63" id="0:53">
+                    <StateTransition stateToId="0:52" duration="120">
+                        <TransitionViewModelCondition>
+                            <TransitionPropertyViewModelComparator>
+                                <BindablePropertyBoolean>
+                                    <DataBindContext sourcePathIds="0:40-0:43" propertyKey="634"/>
+                                </BindablePropertyBoolean>
+                            </TransitionPropertyViewModelComparator>
+                            <TransitionValueBooleanComparator value="false"/>
+                        </TransitionViewModelCondition>
+                    </StateTransition>
+                </AnimationState>
+            </StateMachineLayer>
+        </StateMachine>
+
+        <!-- one-frame poses blended by the transitions above -->
+        <LinearAnimation duration="1" name="RingOff" id="0:60">
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+        <LinearAnimation duration="1" name="RingOn" id="0:61">
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+        <LinearAnimation duration="1" name="ShimmerOff" id="0:62">
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0" interpolationType="linear"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+        <LinearAnimation loopValue="loop" duration="96" name="ShimmerSweep" id="0:63">
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1" interpolationType="linear"/></KeyedProperty>
+                <KeyedProperty propertyKey="13">
+                    <KeyFrameDouble value="-160" interpolationType="linear"/>
+                    <KeyFrameDouble value="740" interpolationType="linear" frame="96"/>
+                </KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+    </Artboard>
+
+    <ViewModel defaultInstanceId="0:41" name="TileState" id="0:40">
+        <ViewModelPropertyBoolean name="focused" id="0:42"/>
+        <ViewModelPropertyBoolean name="connecting" id="0:43"/>
+        <ViewModelInstance exports="true" name="Default" id="0:41">
+            <ViewModelInstanceBoolean propertyValue="false" viewModelPropertyId="0:42"/>
+            <ViewModelInstanceBoolean propertyValue="true" viewModelPropertyId="0:43"/>
+        </ViewModelInstance>
+    </ViewModel>
+</Rive>

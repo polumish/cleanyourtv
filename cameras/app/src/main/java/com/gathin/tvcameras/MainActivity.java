@@ -34,6 +34,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+            // Loads Rive's native renderer; without it the tiles keep their plain frame.
+            app.rive.runtime.kotlin.core.Rive.INSTANCE.init(getApplicationContext(), app.rive.runtime.kotlin.core.RendererType.Rive);
+        } catch (Throwable ignored) {
+            // no Rive on this device
+        }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
