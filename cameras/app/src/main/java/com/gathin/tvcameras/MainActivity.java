@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
         tiles.get(0).requestFocus();
     }
 
-    /** 2x2, each tile 16:9, centred with an even gap. */
+    /** 2x2, each tile 4:3, centred with an even gap. */
     private void placeTiles() {
         int w = root.getWidth();
         int h = root.getHeight();
@@ -81,9 +81,9 @@ public class MainActivity extends Activity {
         int marginBottom = Math.round(48 * density);
         int cellW = (w - 2 * marginX - gap) / 2;
         int cellH = (h - marginTop - marginBottom - gap) / 2;
-        // 16:9 inside the cell
-        int tileW = Math.min(cellW, cellH * 16 / 9);
-        int tileH = tileW * 9 / 16;
+        // 4:3 like the camera tile on Home (and like the small streams), so the picture fills it without bars
+        int tileH = Math.min(cellH, cellW * 3 / 4);
+        int tileW = tileH * 4 / 3;
         int left = (w - (2 * tileW + gap)) / 2;
         int top = marginTop + (h - marginTop - marginBottom - (2 * tileH + gap)) / 2;
         for (int i = 0; i < tiles.size(); i++) {

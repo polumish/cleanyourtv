@@ -27,7 +27,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
- * One camera: a rounded 16:9 tile with a thin white frame (thick when focused) showing the small stream, muted.
+ * One camera: a rounded 4:3 tile with a thin white frame (thick when focused) showing the small stream, muted.
  * {@link #expand()} enlarges it to the whole screen with sound: the small picture and its sound take over at once, the
  * sharp stream starts on a second surface and replaces it when its first picture is ready.
  */
