@@ -1,18 +1,30 @@
 package com.gathin.tvhome;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.util.AttributeSet;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
+import android.view.PixelCopy;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.view.ViewGroup;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.util.Date;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
@@ -31,6 +43,10 @@ public class CameraTile extends FrameLayout {
     private float outlineRadius;
     private Drawable frame;
     private RtspPlayer player;
+    /** The last picture of the previous visit, shown dimmed until the live one arrives. */
+    private final ImageView cached;
+    private final TextView cachedAt;
+    private File cacheFile;
     private boolean expanded;
     private int videoWidth;
     private int videoHeight;
@@ -59,6 +75,21 @@ public class CameraTile extends FrameLayout {
         fullSurface.setVisibility(INVISIBLE);
         addView(fullSurface, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        cached = new ImageView(context);
+        cached.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        cached.setAlpha(0.55f);
+        cached.setVisibility(GONE);
+        addView(cached, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        cachedAt = new TextView(context);
+        cachedAt.setTextColor(0xE6FFFFFF);
+        cachedAt.setTextSize(12f);
+        cachedAt.setShadowLayer(4f, 0f, 1f, Color.BLACK);
+        cachedAt.setVisibility(GONE);
+        LayoutParams atParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
+        atParams.setMargins(Math.round(12 * density), 0, 0, Math.round(8 * density));
+        addView(cachedAt, atParams);
+
         status = new TextView(context);
         status.setTextColor(0xCCFFFFFF);
         status.setTextSize(14f);
@@ -160,6 +191,10 @@ public class CameraTile extends FrameLayout {
         player = new RtspPlayer(getContext(), surface, false, new RtspPlayer.Listener() {
             @Override
             public void onState(RtspPlayer.State state) {
+                if (state == RtspPlayer.State.PLAYING) {
+                    cached.setVisibility(GONE);
+                    cachedAt.setVisibility(GONE);
+                }
                 status.setVisibility(state == RtspPlayer.State.PLAYING ? GONE : VISIBLE);
                 status.setText(state == RtspPlayer.State.RETRYING ? R.string.camera_no_signal
                         : R.string.camera_connecting);
@@ -195,7 +230,49 @@ public class CameraTile extends FrameLayout {
         }
     }
 
+    /** Where this tile keeps its last picture (named after its stream address); shown at once if it is there. */
+    void setCacheFile(File file) {
+        cacheFile = file;
+        showCache();
+    }
+
+    private void showCache() {
+        File file = cacheFile;
+        if (file == null || !file.isFile()) return;
+        Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+        if (bitmap == null) return;
+        cached.setImageBitmap(bitmap);
+        cached.setVisibility(VISIBLE);
+        cachedAt.setText(DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date(file.lastModified())));
+        cachedAt.setVisibility(VISIBLE);
+    }
+
+    /** Keeps what the tile shows right now for the next start. Needs a live picture; asynchronous. */
+    void saveSnapshot() {
+        if (cacheFile == null || expanded || cached.getVisibility() == VISIBLE || surface.getWidth() <= 0
+                || getVisibility() != VISIBLE || !surface.getHolder().getSurface().isValid()) return;
+        final int w = Math.min(640, surface.getWidth());
+        final int h = Math.max(1, surface.getHeight() * w / surface.getWidth());
+        final Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        final File target = cacheFile;
+        try {
+            PixelCopy.request(surface, bitmap, result -> {
+                if (result != PixelCopy.SUCCESS) return;
+                File tmp = new File(target.getPath() + ".tmp");
+                try (FileOutputStream out = new FileOutputStream(tmp)) {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out);
+                } catch (IOException e) {
+                    return;
+                }
+                tmp.renameTo(target);
+            }, new Handler(Looper.getMainLooper()));
+        } catch (IllegalArgumentException ignored) {
+            // the surface went away between the check and the copy
+        }
+    }
+
     void start() {
+        showCache();   // every start, not only the first: the stream needs a moment to reconnect
         if (player != null) player.start();
     }
 

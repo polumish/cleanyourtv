@@ -612,6 +612,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cameraParams.topMargin = Math.round(136 * density);
             cameraTile.setLayoutParams(cameraParams);
             cameraTile.configure(camera);
+            cameraTile.setCacheFile(new java.io.File(getCacheDir(), "camera-" + Integer.toHexString(camera.url.hashCode()) + ".jpg"));
             cameraTile.setOnClickListener(v -> toggleCamera());
             cameraTile.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -975,6 +976,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
         if (cameraTile.isExpanded()) setCameraExpanded(false);
+        cameraTile.saveSnapshot();   // before the stream stops: the next start shows this picture at once
         cameraTile.stop();
         stopAmbientAnimation();
         hero.animate().cancel();
