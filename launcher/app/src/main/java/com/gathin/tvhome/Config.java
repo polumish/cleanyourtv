@@ -152,6 +152,8 @@ final class Config {
     final int homeIdleClockMinutes;
     /** The dock band as light frosted glass like the pills (config.xml, dock_glass); false keeps the solid band. */
     final boolean dockGlass;
+    /** Colour (0xRRGGBB) the focus glass takes and sweeps a sheen in (theme config.json glass_accent); -1 keeps plain white glass. */
+    final int glassAccent;
     /** Shape of the glow behind the focused app (config.xml, glow_style): {@link #GLOW_RADIAL} or {@link #GLOW_HORIZON}. */
     final String glowStyle;
 
@@ -175,7 +177,8 @@ final class Config {
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, int homeIdleClockMinutes,
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
-                   boolean handleViewInputs, CameraSettings camera) {
+                   boolean handleViewInputs, CameraSettings camera, int glassAccent) {
+        this.glassAccent = glassAccent;
         this.handleViewInputs = handleViewInputs;
         this.camera = camera;
         this.inputKeycodes = inputKeycodes;
@@ -427,6 +430,9 @@ final class Config {
                 string(json, "camera_rtsp_url", ""), string(json, "camera_full_url", ""),
                 integer(json, "camera_tile_width_dp", 240, CameraSettings.MIN_WIDTH_DP, CameraSettings.MAX_WIDTH_DP),
                 json.optDouble("camera_tile_aspect", 4.0 / 3.0), string(json, "camera_label", ""));
+        // The blue glass comes only from a theme too; without the key the glass stays white.
+        int glassAccent = json == null ? -1 : color(json, "glass_accent", -1);
+        if (glassAccent != -1) glassAccent &= 0xFFFFFF;
         // A festive skin comes only from a theme; config.xml has no festival.
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
@@ -439,7 +445,7 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied,
                 festival, inputKeycodes, appKeys, stockHomeRedirect, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow,
-                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, camera);
+                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, camera, glassAccent);
     }
 
     /**

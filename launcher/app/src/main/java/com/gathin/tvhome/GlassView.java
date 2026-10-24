@@ -26,6 +26,13 @@ public class GlassView extends View {
     private int glowRgb = 0xFFFFFF;
     /** Glow strength: the white glow stays faint, a coloured one needs more alpha to read as warm light. */
     private int glowAlpha = 0x30;
+    /** The theme's glass colour (0xRRGGBB), -1 for plain white; what setAccent(0) goes back to. */
+    private int baseRgb = -1;
+    /** One light band crossing the slab as focus lands: 0 = not running, otherwise 0..1 across. */
+    private final Paint sweepPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.Matrix sweepMatrix = new android.graphics.Matrix();
+    private android.animation.ValueAnimator sweeper;
+    private float sweep;
 
     public GlassView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -41,8 +48,17 @@ public class GlassView extends View {
         setLayerType(LAYER_TYPE_HARDWARE, null);
     }
 
-    /** Tints the rim and the outer glow; 0 restores the plain white glass. */
+    /** The theme's glass colour: the glass returns to it whenever no other accent is set; -1 = plain white. */
+    void setBaseAccent(int rgb) {
+        baseRgb = rgb;
+        setAccent(0);
+    }
+
+    /** Tints the rim and the outer glow; 0 restores the base glass (white unless the theme sets a colour). */
     void setAccent(int argb) {
+        if (argb == 0 && baseRgb != -1) {
+            argb = 0xFF000000 | baseRgb;
+        }
         if (argb == 0) {
             glowRgb = 0xFFFFFF;
             glowAlpha = 0x30;
@@ -58,6 +74,36 @@ public class GlassView extends View {
         invalidate();
     }
 
+    /**
+     * One soft band of light crossing the glass left to right in 520 ms, started when focus lands on a tile.
+     * Only with a theme colour; the layer is redrawn per frame for that half second, nothing at rest.
+     */
+    void sheen() {
+        if (baseRgb == -1 || getWidth() <= 0 || !isAttachedToWindow()) return;
+        if (sweeper != null) sweeper.cancel();
+        sweeper = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        sweeper.setDuration(520);
+        sweeper.setInterpolator(new android.view.animation.DecelerateInterpolator(1.4f));
+        sweeper.addUpdateListener(a -> {
+            sweep = (float) a.getAnimatedValue();
+            invalidate();
+        });
+        sweeper.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                sweep = 0f;
+                invalidate();
+            }
+        });
+        sweeper.start();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        if (sweeper != null) sweeper.cancel();
+        super.onDetachedFromWindow();
+    }
+
     void setRadius(float px) {
         radius = px;
         invalidate();
@@ -68,6 +114,10 @@ public class GlassView extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         fill.setShader(new LinearGradient(0, 0, 0, h, 0x3DFFFFFF, 0x12FFFFFF, Shader.TileMode.CLAMP));
         specular.setShader(new LinearGradient(0, 0, 0, h * 0.45f, 0x66FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        // The band: transparent, bright in the middle, transparent; moved across with a matrix (no new shader per frame).
+        float band = Math.max(w * 0.35f, 40f * density);
+        sweepPaint.setShader(new LinearGradient(-band / 2f, 0, band / 2f, 0,
+                new int[]{0x00FFFFFF, 0x70FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
     }
 
     @Override
@@ -96,6 +146,13 @@ public class GlassView extends View {
         canvas.clipRect(rect.left, rect.top, rect.right, rect.top + rect.height() * 0.45f);
         canvas.drawRoundRect(rect, radius, radius, specular);
         canvas.restore();
+
+        if (sweep > 0f && sweep < 1f && sweepPaint.getShader() != null) {
+            float band = Math.max(getWidth() * 0.35f, 40f * density);
+            sweepMatrix.setTranslate(rect.left - band / 2f + (rect.width() + band) * sweep, 0);
+            sweepPaint.getShader().setLocalMatrix(sweepMatrix);
+            canvas.drawRoundRect(rect, radius, radius, sweepPaint);
+        }
 
         canvas.drawRoundRect(rect, radius, radius, rim);
     }

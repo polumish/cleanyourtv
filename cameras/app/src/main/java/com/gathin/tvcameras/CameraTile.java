@@ -96,7 +96,7 @@ final class CameraTile extends FrameLayout {
                 ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
 
         cached = new ImageView(context);
-        cached.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        cached.setScaleType(ImageView.ScaleType.CENTER_CROP);
         cached.setAlpha(0.55f);
         cached.setVisibility(GONE);
         addView(cached, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -326,7 +326,7 @@ final class CameraTile extends FrameLayout {
                 ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
-    /** Each picture keeps its own shape inside the tile; bars where it does not fill it. */
+    /** Each picture keeps its own shape and fills the tile, cropped at the edges where the shapes differ (no bars). */
     private void fit() {
         if (getWidth() <= 0 || getHeight() <= 0) return;
         fitSurface(surface, videoWidth, videoHeight);
@@ -335,7 +335,7 @@ final class CameraTile extends FrameLayout {
 
     private void fitSurface(SurfaceView view, int width, int height) {
         if (width <= 0 || height <= 0) return;
-        float scale = Math.min((float) getWidth() / width, (float) getHeight() / height);
+        float scale = Math.max((float) getWidth() / width, (float) getHeight() / height);
         int w = Math.round(width * scale);
         int h = Math.round(height * scale);
         ViewGroup.LayoutParams current = view.getLayoutParams();

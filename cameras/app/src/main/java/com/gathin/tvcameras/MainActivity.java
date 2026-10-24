@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
     private int lastWidth;
     private int lastHeight;
     /** Start the four streams one after another (true) or all at once (false). */
-    private static final boolean SEQUENTIAL = false;
+    private static final boolean SEQUENTIAL = true;
     private boolean started;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int startToken;
