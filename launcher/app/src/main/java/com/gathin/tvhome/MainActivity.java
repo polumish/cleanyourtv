@@ -992,8 +992,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** OK on the camera tile: the same live picture enlarged to the screen with sound; OK or Back shrinks it. */
     private void toggleCamera() {
-        if (cameraTile.isExpanded()) setCameraExpanded(false);
-        else setCameraExpanded(true);
+        if (cameraTile.isExpanded()) {
+            setCameraExpanded(false);
+            return;
+        }
+        // The Cameras app (four cameras, one enlarged) takes over when it is installed; otherwise the tile enlarges itself.
+        Intent cameras = getPackageManager().getLaunchIntentForPackage("com.gathin.tvcameras");
+        if (cameras != null) {
+            startActivity(cameras);
+            return;
+        }
+        setCameraExpanded(true);
     }
 
     private void setCameraExpanded(boolean expand) {

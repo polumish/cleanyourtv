@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Камери</string>
+    <string name="connecting">Підключення…</string>
+    <string name="no_signal">Немає сигналу</string>
+    <string name="hint">Утримуйте OK на камері, щоб відкрити налаштування</string>
+    <string name="settings_title">Налаштування камер</string>
+    <string name="camera_n">Камера %d</string>
+    <string name="field_name">Назва</string>
+    <string name="field_tile_url">Маленька картинка (rtsp://…)</string>
+    <string name="field_full_url">На весь екран (rtsp://…, порожньо = той самий)</string>
+    <string name="save">Зберегти</string>
+    <string name="reset">Типові</string>
+    <string name="bad_url">%1$s: адреса має починатися з rtsp://</string>
+</resources>

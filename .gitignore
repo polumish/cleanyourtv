@@ -17,3 +17,7 @@ work/
 *.aab
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
+cameras/.gradle/
+cameras/build/
+cameras/app/build/
+cameras/local.properties

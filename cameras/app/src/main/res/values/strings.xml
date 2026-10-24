@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cameras</string>
+    <string name="connecting">Connecting…</string>
+    <string name="no_signal">No signal</string>
+    <string name="hint">Hold OK on a camera for settings</string>
+    <string name="settings_title">Camera settings</string>
+    <string name="camera_n">Camera %d</string>
+    <string name="field_name">Name</string>
+    <string name="field_tile_url">Small picture (rtsp://…)</string>
+    <string name="field_full_url">Full screen (rtsp://…, empty = the same)</string>
+    <string name="save">Save</string>
+    <string name="reset">Defaults</string>
+    <string name="bad_url">%1$s: the address must start with rtsp://</string>
+</resources>
