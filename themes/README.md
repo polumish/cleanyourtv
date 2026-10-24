@@ -98,6 +98,11 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `dock_glass` | bool | The dock band as light frosted glass like the top bar's pills (`false` by default); suits `sky_intensity` or a wallpaper, where the solid band reads as a dark slab |
 | `ambient_glow` | bool | The glow behind the dock in the focused app's colour (`true` by default); `false` keeps only `background_color` or the wallpaper, e.g. for a calm photo background |
 | `app_glow` | bool | The focus highlight glows in the focused app's colour on every tile, as `cinematic_home` does for the dock (`false` by default) |
+| `camera_rtsp_url` | `rtsp://` address | A live, muted camera tile in the top right under the pills, played by the TV's own player and decoder; Down from the pills reaches it, OK opens it full screen with sound. Empty (the default) builds nothing and opens no connection. Needs the INTERNET permission this fork adds; see [docs/camera-tile.md](../docs/camera-tile.md) |
+| `camera_full_url` | `rtsp://` address | The stream the full-screen view plays, with sound; the tile's own stream when unset or not an `rtsp://` address |
+| `camera_tile_width_dp` | 120 to 480 | Width of the tile in dp (240 by default); the height follows `camera_tile_aspect` |
+| `camera_tile_aspect` | 1.0 to 2.4 | Width divided by height, the stream's own shape: 1.333 (default) for 640×480, 1.778 for 16:9 |
+| `camera_label` | string | A name shown at the top left of the full-screen view and read out for the tile (24 characters at most) |
 
 ## Wallpapers
 

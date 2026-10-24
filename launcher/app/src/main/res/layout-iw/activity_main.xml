@@ -373,6 +373,14 @@
         </FrameLayout>
     </LinearLayout>
 
+    <!-- Optional live camera tile (camera_rtsp_url); gone and unbuilt unless a theme turns it on. -->
+    <com.gathin.tvhome.CameraTile
+        android:id="@+id/cameraTile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:visibility="gone" />
+
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView
         android:id="@+id/glass"

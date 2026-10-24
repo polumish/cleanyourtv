@@ -158,6 +158,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView greeting;
     private View clockBlock;
     private View btnInputs;
+    /** The optional live camera tile (config.json camera_rtsp_url); gone and silent unless a theme sets it. */
+    private CameraTile cameraTile;
+    private CameraSettings camera = CameraSettings.OFF;
     /** config show_inputs_pill: false keeps the Inputs pill hidden even when the TV has inputs. */
     private boolean showInputsPill = true;
     private TextView btnWifi;
@@ -551,6 +554,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         btnInputs = findViewById(R.id.btnInputs);
+        cameraTile = findViewById(R.id.cameraTile);
         View btnSettings = findViewById(R.id.btnSettings);
         btnInputs.setOnClickListener(v -> showInputs());
         btnWifi.setOnClickListener(v -> openNetworkPill());
@@ -582,6 +586,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         });
 
+        // The camera tile sits under the pills at the right; Down from the pills reaches it, Down from it the dock.
+        camera = cfg.camera;
+        if (camera.enabled()) {
+            android.widget.FrameLayout.LayoutParams cameraParams = new android.widget.FrameLayout.LayoutParams(
+                    Math.round(camera.widthDp * density), Math.round(camera.heightDp() * density),
+                    android.view.Gravity.TOP | android.view.Gravity.END);
+            cameraParams.setMarginEnd(Math.round(56 * density));
+            cameraParams.topMargin = Math.round(112 * density);
+            cameraTile.setLayoutParams(cameraParams);
+            cameraTile.configure(camera);
+            cameraTile.setOnClickListener(v -> openCamera());
+            cameraTile.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    btnSettings.requestFocus();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                // Nothing to the sides: the focus finder would jump to a tile far below.
+                return keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT;
+            });
+            cameraTile.setVisibility(View.VISIBLE);
+        }
+
         // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
         // jump to a tile far below when there is nothing in that direction.
         boolean rtlMenuBar = getResources().getBoolean(R.bool.rtl_menu_bar);
@@ -589,6 +620,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (cameraTile.getVisibility() == View.VISIBLE) {
+                    cameraTile.requestFocus();
+                    return true;
+                }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
                 focusTile(lastFocused % COLUMNS);
                 return true;
@@ -742,6 +777,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         restartIdleClock();
+        if (camera.enabled()) cameraTile.start();   // plays only while Home is on screen
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
@@ -918,6 +954,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
+        cameraTile.stop();
         stopAmbientAnimation();
         hero.animate().cancel();
         ambient.animate().cancel();
@@ -930,6 +967,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (cardPrompt != null) cardPrompt.dismiss();
         if (appLibrary != null) appLibrary.close();
         if (openPopup != null) openPopup.dismiss();
+    }
+
+    /** OK on the camera tile: the same camera full screen, with sound. */
+    private void openCamera() {
+        Intent intent = new Intent(this, CameraActivity.class)
+                .putExtra(CameraActivity.EXTRA_URL, camera.fullUrl)
+                .putExtra(CameraActivity.EXTRA_LABEL, camera.label);
+        startActivity(intent);
     }
 
     @Override

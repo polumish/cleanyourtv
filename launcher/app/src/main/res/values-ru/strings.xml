@@ -139,5 +139,8 @@
     <string name="race_countdown_days">%1$d д %2$d ч</string>
     <!-- Cinematic top shelf (cinematic_home): the line under the focused dock app's name; %1$s is when it was
          last opened, e.g. "5 minutes ago" or "yesterday, 9:40 pm". -->
+    <string name="camera_default_label">Камера</string>
+    <string name="camera_connecting">Подключение…</string>
+    <string name="camera_no_signal">Нет сигнала</string>
     <string name="last_opened">Последний запуск: %1$s</string>
 </resources>

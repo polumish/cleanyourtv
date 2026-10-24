@@ -160,6 +160,8 @@ final class Config {
     final boolean wallpaperCaptions;
     /** Answer VIEW_INPUTS with the Inputs menu (handle_view_inputs); see InputsRequestActivity. */
     final boolean handleViewInputs;
+    /** The optional live camera tile (config.json camera_rtsp_url); {@link CameraSettings#OFF} unless a theme sets it. */
+    final CameraSettings camera;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, String liveTvInputId, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -173,8 +175,9 @@ final class Config {
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, int homeIdleClockMinutes,
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
-                   boolean handleViewInputs) {
+                   boolean handleViewInputs, CameraSettings camera) {
         this.handleViewInputs = handleViewInputs;
+        this.camera = camera;
         this.inputKeycodes = inputKeycodes;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.keyFilter = keyFilter;
@@ -419,6 +422,11 @@ final class Config {
                 wallpaperEnabled = true;
             }
         }
+        // The camera tile comes only from a theme, like the festival: config.xml has no camera.
+        CameraSettings camera = json == null ? CameraSettings.OFF : CameraSettings.of(
+                string(json, "camera_rtsp_url", ""), string(json, "camera_full_url", ""),
+                integer(json, "camera_tile_width_dp", 240, CameraSettings.MIN_WIDTH_DP, CameraSettings.MAX_WIDTH_DP),
+                json.optDouble("camera_tile_aspect", 4.0 / 3.0), string(json, "camera_label", ""));
         // A festive skin comes only from a theme; config.xml has no festival.
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
@@ -431,7 +439,7 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied,
                 festival, inputKeycodes, appKeys, stockHomeRedirect, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow,
-                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs);
+                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, camera);
     }
 
     /**
