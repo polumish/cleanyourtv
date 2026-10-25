@@ -59,6 +59,9 @@ final class CameraTile extends FrameLayout {
     private RiveAnimationView rive;
     private boolean riveFocused;
     private boolean riveConnecting = true;
+    private final Runnable parkRive = () -> {
+        if (rive != null) rive.pause();
+    };
     private boolean riveReady;
     private boolean riveExpanded;
     private int videoWidth;
@@ -379,12 +382,15 @@ final class CameraTile extends FrameLayout {
                 riveReady = true;
                 if (!expanded) setForeground(null);   // Rive draws the frame from now on
             }
-            vmi.getBooleanProperty("connecting").setValue(riveConnecting && cached.getVisibility() != VISIBLE);
-            if (rive.getController().getPlayingStateMachines().isEmpty()) {
-                // the machine had settled; a changed property alone does not wake it in this runtime
-                rive.play(rive.getController().getStateMachines().get(0).getName(), app.rive.runtime.kotlin.core.Loop.AUTO,
-                        app.rive.runtime.kotlin.core.Direction.AUTO, true, false);
-            }
+            boolean shimmer = riveConnecting && cached.getVisibility() != VISIBLE;
+            vmi.getBooleanProperty("connecting").setValue(shimmer);
+            // A changed property does not wake a settled machine in this runtime, but a machine left playing redraws the
+            // tile every frame for good (17 fps on the TV). So wake it for the length of the transition, then park it;
+            // only the connecting shimmer keeps it running.
+            rive.removeCallbacks(parkRive);
+            rive.play(rive.getController().getStateMachines().get(0).getName(), app.rive.runtime.kotlin.core.Loop.AUTO,
+                    app.rive.runtime.kotlin.core.Direction.AUTO, true, false);
+            if (!shimmer) rive.postDelayed(parkRive, 500);
         } catch (Throwable e) {
             // the scene is decoration: never let it break the tile
             android.util.Log.w("CameraTile", "Rive state not applied: " + e);

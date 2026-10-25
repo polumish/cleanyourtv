@@ -76,7 +76,17 @@ final class RtspPlayer implements SurfaceHolder.Callback {
     /** The picture keeps playing; only the volume changes, so unmuting is instant. */
     void setMuted(boolean muted) {
         this.muted = muted;
-        if (player != null) player.setVolume(muted ? 0f : 1f);
+        if (player != null) applyAudio(player);
+    }
+
+    /**
+     * A muted picture decodes no sound at all: an audio decoder per tile costs CPU, and a stream whose audio timestamps
+     * jump (ffmpeg-remuxed ones do) stalled the whole player. Unmuting switches the track on again; it is already set up.
+     */
+    private void applyAudio(ExoPlayer p) {
+        p.setVolume(muted ? 0f : 1f);
+        p.setTrackSelectionParameters(p.getTrackSelectionParameters().buildUpon()
+                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_AUDIO, muted).build());
     }
 
     void setUrl(String url) {
@@ -102,11 +112,13 @@ final class RtspPlayer implements SurfaceHolder.Callback {
         openedAt = SystemClock.elapsedRealtime();
         try {
             // A live camera needs no cushion: start after a quarter second of media instead of the default 2.5 s.
-            ExoPlayer p = new ExoPlayer.Builder(context)
-                    .setLoadControl(new DefaultLoadControl.Builder().setBufferDurationsMs(1000, 3000, 250, 500).build())
+            ExoPlayer p = new ExoPlayer.Builder(context, new androidx.media3.exoplayer.DefaultRenderersFactory(context)
+                            // A TV has only a couple of hardware video decoders: the next picture falls back to the software one.
+                            .setEnableDecoderFallback(true))
+                    .setLoadControl(new DefaultLoadControl.Builder().setBufferDurationsMs(2500, 6000, 250, 1500).build())
                     .build();
             player = p;
-            p.setVolume(muted ? 0f : 1f);
+            applyAudio(p);
             p.setVideoSurfaceHolder(holder);
             p.addListener(new Player.Listener() {
                 @Override
