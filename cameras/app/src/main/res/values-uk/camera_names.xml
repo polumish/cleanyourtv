@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cam_backyard">Домофон</string>
+    <string name="cam_kalitka">Калітка</string>
+    <string name="cam_maisternia">Майстерня</string>
+    <string name="cam_sad">Сад</string>
+</resources>

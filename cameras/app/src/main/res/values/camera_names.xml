@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cam_backyard">Backyard</string>
+    <string name="cam_kalitka">Gate</string>
+    <string name="cam_maisternia">Workshop</string>
+    <string name="cam_sad">Garden</string>
+    <!-- What may be said after "open ... in Cameras": the names in Home Assistant, English and Russian forms. -->
+    <string-array name="cam_backyard_names"><item>Backyard</item><item>Intercom</item><item>Doorbell</item><item>Домофон</item><item>Задний двор</item></string-array>
+    <string-array name="cam_kalitka_names"><item>Gate</item><item>Kalitka</item><item>Калітка</item><item>Калитка</item><item>Ворота</item></string-array>
+    <string-array name="cam_maisternia_names"><item>Workshop</item><item>Maisternia</item><item>Майстерня</item><item>Мастерская</item></string-array>
+    <string-array name="cam_sad_names"><item>Garden</item><item>Sad</item><item>Сад</item></string-array>
+</resources>

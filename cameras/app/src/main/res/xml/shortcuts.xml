@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Assistant App Actions: "Калітка в Камерах" opens that camera at once. Whether a given TV's Assistant honours them
+     is up to Google; the tvcameras://open?camera=... links below work regardless (adb, remote-button apps, Home Assistant). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.gathin.tvcameras"
+            android:targetClass="com.gathin.tvcameras.MainActivity">
+            <parameter android:name="feature" android:key="camera" />
+        </intent>
+    </capability>
+
+    <shortcut android:shortcutId="cam_backyard" android:shortcutShortLabel="@string/cam_backyard">
+        <intent android:action="android.intent.action.VIEW" android:data="tvcameras://open?camera=backyard"
+            android:targetPackage="com.gathin.tvcameras" android:targetClass="com.gathin.tvcameras.MainActivity" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/cam_backyard_names" />
+        </capability-binding>
+    </shortcut>
+    <shortcut android:shortcutId="cam_kalitka" android:shortcutShortLabel="@string/cam_kalitka">
+        <intent android:action="android.intent.action.VIEW" android:data="tvcameras://open?camera=kalitka"
+            android:targetPackage="com.gathin.tvcameras" android:targetClass="com.gathin.tvcameras.MainActivity" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/cam_kalitka_names" />
+        </capability-binding>
+    </shortcut>
+    <shortcut android:shortcutId="cam_maisternia" android:shortcutShortLabel="@string/cam_maisternia">
+        <intent android:action="android.intent.action.VIEW" android:data="tvcameras://open?camera=maisternia"
+            android:targetPackage="com.gathin.tvcameras" android:targetClass="com.gathin.tvcameras.MainActivity" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/cam_maisternia_names" />
+        </capability-binding>
+    </shortcut>
+    <shortcut android:shortcutId="cam_sad" android:shortcutShortLabel="@string/cam_sad">
+        <intent android:action="android.intent.action.VIEW" android:data="tvcameras://open?camera=sad"
+            android:targetPackage="com.gathin.tvcameras" android:targetClass="com.gathin.tvcameras.MainActivity" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/cam_sad_names" />
+        </capability-binding>
+    </shortcut>
+</shortcuts>

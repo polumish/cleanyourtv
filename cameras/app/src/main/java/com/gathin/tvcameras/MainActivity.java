@@ -30,6 +30,8 @@ public class MainActivity extends Activity {
     private boolean started;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int startToken;
+    /** A camera asked for by a link or a voice command (see {@link #cameraArg}); opened enlarged once the tiles are up. */
+    private String pendingCamera;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +42,7 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {
             // no Rive on this device
         }
+        pendingCamera = cameraArg(getIntent());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -185,7 +188,72 @@ public class MainActivity extends Activity {
         started = true;
         // Rebuilt every time: the settings screen may have changed a stream.
         buildTiles();
-        startSequence(null);
+        if (!openPendingCamera()) startSequence(null);
+    }
+
+    /** Already open and asked again ("Калітка", then "Майстерня"): switch straight to the other camera. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        pendingCamera = cameraArg(intent);
+        if (!started || pendingCamera == null) return;
+        buildTiles();
+        if (!openPendingCamera()) startSequence(null);
+    }
+
+    /** The camera named in a tvcameras://open?camera=... link or in a "camera" extra (what the Assistant passes), or null. */
+    private static String cameraArg(Intent intent) {
+        if (intent == null) return null;
+        String value = intent.getStringExtra("camera");
+        if (value == null && intent.getData() != null) value = intent.getData().getQueryParameter("camera");
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    /** 0-3 for a number 1-4, a camera's own name, or its Frigate name / usual spoken forms; -1 when nothing fits. */
+    private int cameraIndex(String wanted) {
+        String w = wanted.toLowerCase(java.util.Locale.ROOT);
+        if (w.length() == 1 && w.charAt(0) >= '1' && w.charAt(0) <= '4') return w.charAt(0) - '1';
+        List<CameraStore.Camera> cameras = CameraStore.load(this);
+        for (int i = 0; i < cameras.size(); i++) {
+            if (cameras.get(i).name.toLowerCase(java.util.Locale.ROOT).equals(w)) return i;
+        }
+        String[][] aliases = {
+                {"backyard", "intercom", "doorbell", "домофон", "задний двор"},
+                {"kalitka", "gate", "калітка", "калитка", "ворота"},
+                {"maisternia", "workshop", "майстерня", "мастерская"},
+                {"sad", "garden", "сад"}};
+        for (int i = 0; i < aliases.length; i++) {
+            for (String alias : aliases[i]) if (alias.equals(w)) return i;
+        }
+        return -1;
+    }
+
+    /** Starts only the asked camera and enlarges it at once, so it is on screen in about a second. */
+    private boolean openPendingCamera() {
+        String wanted = pendingCamera;
+        pendingCamera = null;
+        if (wanted == null) return false;
+        final int index = cameraIndex(wanted);
+        if (index < 0 || index >= tiles.size()) return false;
+        final CameraTile tile = tiles.get(index);
+        Runnable open = () -> {
+            if (!started || tile.isExpanded()) return;
+            tile.start();
+            expand(tile);
+        };
+        if (root.getWidth() > 0) {
+            root.post(open);
+        } else {
+            root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                    root.removeOnLayoutChangeListener(this);
+                    root.post(open);
+                }
+            });
+        }
+        return true;
     }
 
     @Override
