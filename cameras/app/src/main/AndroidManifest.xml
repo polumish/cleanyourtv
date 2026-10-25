@@ -34,6 +34,18 @@
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
+        <!-- The remote's Browser button (KEYCODE_EXPLORER) launches whatever answers to the browser category: this app, for a TV
+             that has no web browser and a remote with that button. -->
+        <activity-alias
+            android:name=".BrowserButton"
+            android:targetActivity=".MainActivity"
+            android:exported="true">
+            <intent-filter android:priority="100">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_BROWSER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
